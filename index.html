@@ -108,11 +108,21 @@
               <label class="block text-xs font-bold text-slate-700 uppercase mb-2">Kapasitas per Kelompok</label>
               <input type="number" id="membersPerGroup" min="1" max="100" placeholder="Opsional" 
                 class="w-full px-4 py-3 rounded-xl bg-white/50 input-premium text-sm font-medium">
-              <div class="mt-3 flex items-start gap-2 bg-blue-50/50 p-3 rounded-xl">
-                <i class="fas fa-circle-info text-blue-600 text-xs mt-0.5"></i>
-                <p class="text-[11px] text-blue-800 leading-relaxed font-medium">Jika diisi, jumlah kelompok akan dihitung otomatis berdasarkan kapasitas ini.</p>
-              </div>
             </div>
+          </div>
+        </div>
+
+        <div class="glass-card rounded-2xl p-6 shadow-sm">
+          <h2 class="text-sm font-bold uppercase tracking-widest text-slate-400 mb-6 flex items-center gap-2">
+            <i class="fas fa-link text-blue-600"></i> Fitur Anti Lepas
+          </h2>
+          <div class="space-y-4">
+            <div class="bg-blue-50/50 p-3 rounded-xl mb-4">
+              <p class="text-[11px] text-blue-800 leading-relaxed font-medium">Pasangkan 2 nama agar selalu dalam 1 kelompok. Masukkan dengan format: <b>Nama A & Nama B</b></p>
+            </div>
+            <textarea id="pairsInput" rows="3" 
+              class="w-full px-4 py-3 rounded-xl bg-white/50 input-premium text-sm font-medium resize-none" 
+              placeholder="Andi & Budi&#10;Caca & Dedi"></textarea>
           </div>
         </div>
 
@@ -137,7 +147,7 @@
               </button>
             </div>
 
-            <textarea id="namesInput" rows="7" 
+            <textarea id="namesInput" rows="6" 
               class="w-full px-4 py-3 rounded-xl bg-white/50 input-premium text-sm font-medium resize-none" 
               placeholder="Input nama (satu per baris)..."></textarea>
             
@@ -172,13 +182,7 @@
           </div>
 
           <div id="groupsContainer" class="p-6 md:p-8 overflow-y-auto flex-1 bg-slate-50/20">
-            <div class="h-full flex flex-col items-center justify-center text-center py-20 opacity-30">
-              <div class="w-16 h-16 bg-slate-200 rounded-full flex items-center justify-center mb-4">
-                <i class="fas fa-layer-group text-2xl text-slate-400"></i>
-              </div>
-              <p class="text-slate-500 font-semibold max-w-xs">Data kelompok yang dihasilkan akan ditampilkan secara rapi di area ini.</p>
             </div>
-          </div>
         </div>
       </div>
 
@@ -186,14 +190,16 @@
   </div>
 
   <footer class="max-w-7xl mx-auto px-8 py-8 text-center">
-    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Built for Professionals &bull; ProGroup v2.0</p>
+    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Built for Professionals &bull; ProGroup v2.1</p>
   </footer>
 
   <script>
     // ---------------------- STATE & LOGIC -------------------------
     let currentNames = [];
+    let lastGeneratedGroups = [];
 
     const namesTextarea = document.getElementById('namesInput');
+    const pairsTextarea = document.getElementById('pairsInput');
     const totalNamesSpan = document.getElementById('totalNamesCount');
     const generateBtn = document.getElementById('generateBtn');
     const resetNamesBtn = document.getElementById('resetNamesBtn');
@@ -214,18 +220,7 @@
     function setNamesFromString(rawStr) {
       let lines = rawStr.split(/\r?\n/);
       let names = lines.map(l => l.trim()).filter(l => l !== "");
-      const uniqueNames = [];
-      const seen = new Set();
-      for (let n of names) {
-        if (!seen.has(n)) {
-          seen.add(n);
-          uniqueNames.push(n);
-        }
-      }
-      if (uniqueNames.length === 0 && rawStr.trim() !== "") {
-        return false;
-      }
-      currentNames = uniqueNames;
+      currentNames = [...new Set(names)];
       updateUIFromNames();
       return true;
     }
@@ -237,6 +232,7 @@
         "Katherine Johnson", "Leonidas I", "Marcus Aurelius", "Natasha Romanoff", "Oliver Queen"
       ];
       currentNames = [...defaultNames];
+      pairsTextarea.value = "Alexander Graham & Beatrix Kiddo";
       updateUIFromNames();
     }
 
@@ -248,35 +244,13 @@
         try {
           if (fileType === 'json') {
             const parsed = JSON.parse(content);
-            if (Array.isArray(parsed)) {
-              let stringArray = parsed.map(item => String(item).trim()).filter(s => s !== "");
-              setNamesFromString(stringArray.join('\n'));
-            }
+            if (Array.isArray(parsed)) setNamesFromString(parsed.join('\n'));
           } else if (fileType === 'txt') {
             setNamesFromString(content);
           }
         } catch (err) { console.error(err); }
       };
       reader.readAsText(file, "UTF-8");
-    }
-
-    function getGroupingParams(totalNamesCount) {
-      let groupCount = parseInt(groupCountInput.value);
-      let membersPerGroupRaw = membersPerGroupInput.value.trim();
-      let useFixedMembers = membersPerGroupRaw !== "";
-      let fixedMembers = useFixedMembers ? parseInt(membersPerGroupRaw) : 0;
-
-      if (totalNamesCount === 0) return { error: "Daftar nama masih kosong." };
-
-      if (useFixedMembers) {
-        if (isNaN(fixedMembers) || fixedMembers < 1) return { error: "Kapasitas minimal 1." };
-        let requiredGroups = Math.ceil(totalNamesCount / fixedMembers);
-        return { mode: "membersPerGroup", membersPerGroup: fixedMembers, totalGroups: requiredGroups };
-      } else {
-        if (isNaN(groupCount) || groupCount < 1) groupCount = 1;
-        if (groupCount > totalNamesCount) groupCount = totalNamesCount;
-        return { mode: "groupCount", groupCount: groupCount, totalGroups: groupCount };
-      }
     }
 
     function shuffleArray(arr) {
@@ -289,47 +263,59 @@
     }
 
     function generateGroups() {
+      syncNamesFromTextarea();
       if (currentNames.length === 0) {
         groupsContainer.innerHTML = `<div class="text-center py-20 opacity-50 font-bold text-slate-400">Input nama untuk memulai</div>`;
         return;
       }
 
-      const total = currentNames.length;
-      const params = getGroupingParams(total);
-      if (params.error) {
-        groupsContainer.innerHTML = `<div class="text-center text-red-500 py-10 font-bold">${params.error}</div>`;
-        return;
-      }
-
-      const shuffled = shuffleArray(currentNames);
-      let groups = [];
-      let totalGroups = params.totalGroups;
-
-      if (params.mode === "membersPerGroup") {
-        const members = params.membersPerGroup;
-        let idx = 0;
-        for (let g = 0; g < totalGroups; g++) {
-          let groupMembers = shuffled.slice(idx, idx + members);
-          if (groupMembers.length > 0) groups.push(groupMembers);
-          idx += members;
+      // Process Pairs
+      let pairs = [];
+      const pairLines = pairsTextarea.value.split('\n').filter(l => l.includes('&'));
+      let pairedNames = new Set();
+      
+      pairLines.forEach(line => {
+        let parts = line.split('&').map(p => p.trim());
+        if (parts.length >= 2 && parts[0] && parts[1]) {
+          pairs.push([parts[0], parts[1]]);
+          pairedNames.add(parts[0]);
+          pairedNames.add(parts[1]);
         }
-      } 
-      else {
-        let groupCountFinal = params.groupCount;
-        let baseSize = Math.floor(total / groupCountFinal);
-        let remainder = total % groupCountFinal;
-        let start = 0;
-        for (let i = 0; i < groupCountFinal; i++) {
-          let currentSize = baseSize + (i < remainder ? 1 : 0);
-          groups.push(shuffled.slice(start, start + currentSize));
-          start += currentSize;
-        }
-      }
+      });
 
-      groups = groups.filter(g => g.length > 0);
-      renderGroupsToDOM(groups);
-      infoSummary.innerText = `${total} Partisipan • ${groups.length} Kelompok`;
-      return groups;
+      // Combine all names (ensure paired names are in total list)
+      let allNames = [...new Set([...currentNames, ...pairedNames])];
+      let soloNames = allNames.filter(n => !pairedNames.has(n));
+      
+      // Determine Group Count
+      let totalItems = soloNames.length + pairs.length;
+      let targetGroups = parseInt(groupCountInput.value) || 1;
+      let membersPerGroupRaw = membersPerGroupInput.value.trim();
+      
+      if (membersPerGroupRaw !== "") {
+        let fixedSize = parseInt(membersPerGroupRaw);
+        targetGroups = Math.ceil(allNames.length / (fixedSize || 1));
+      }
+      if (targetGroups > allNames.length) targetGroups = allNames.length;
+      if (targetGroups < 1) targetGroups = 1;
+
+      // Logic pembagian: Campur pairs dan solos
+      let randomizedItems = shuffleArray([...pairs, ...soloNames]);
+      let groups = Array.from({ length: targetGroups }, () => []);
+
+      // Round robin distribution
+      randomizedItems.forEach((item, index) => {
+        let groupIdx = index % targetGroups;
+        if (Array.isArray(item)) {
+          groups[groupIdx].push(...item);
+        } else {
+          groups[groupIdx].push(item);
+        }
+      });
+
+      lastGeneratedGroups = groups.filter(g => g.length > 0);
+      renderGroupsToDOM(lastGeneratedGroups);
+      infoSummary.innerText = `${allNames.length} Partisipan • ${lastGeneratedGroups.length} Kelompok`;
     }
 
     function renderGroupsToDOM(groups) {
@@ -367,14 +353,16 @@
       return str.replace(/[&<>]/g, (m) => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]));
     }
 
-    function copyGroupsToClipboard() {
-      const groups = generateGroups();
-      if (!groups) return;
+    function copyResultToClipboard() {
+      if (lastGeneratedGroups.length === 0) {
+        alert("Belum ada hasil untuk disalin.");
+        return;
+      }
       
       let copyText = "📋 PROGROUP RESULT\n";
       copyText += "----------------------------\n";
-      groups.forEach((group, i) => {
-        copyText += `\nKELOMPOK ${i+1} (${group.length} Partisipan):\n`;
+      lastGeneratedGroups.forEach((group, i) => {
+        copyText += `\nKELOMPOK ${i+1} (${group.length} Orang):\n`;
         group.forEach((name, idx) => {
           copyText += `${idx+1}. ${name}\n`;
         });
@@ -382,7 +370,7 @@
       
       navigator.clipboard.writeText(copyText).then(() => {
         const originalText = copyResultBtn.innerHTML;
-        copyResultBtn.innerHTML = '<i class="fas fa-check text-green-500"></i> Tersalin!';
+        copyResultBtn.innerHTML = '<i class="fas fa-check text-green-500"></i> Berhasil Disalin';
         setTimeout(() => { copyResultBtn.innerHTML = originalText; }, 2000);
       });
     }
@@ -390,8 +378,7 @@
     function syncNamesFromTextarea() {
       const raw = namesTextarea.value;
       const lines = raw.split(/\r?\n/);
-      const namesArray = lines.map(l => l.trim()).filter(l => l !== "");
-      currentNames = [...new Set(namesArray)];
+      currentNames = [...new Set(lines.map(l => l.trim()).filter(l => l !== ""))];
       totalNamesSpan.innerText = currentNames.length;
     }
 
@@ -400,19 +387,19 @@
     resetNamesBtn.addEventListener('click', setDefaultExample);
     clearNamesBtn.addEventListener('click', () => {
       currentNames = []; updateUIFromNames();
-      groupsContainer.innerHTML = '<div class="text-center py-20 opacity-30 text-slate-400">Daftar nama dikosongkan</div>';
-      infoSummary.innerText = "Cleared";
+      pairsTextarea.value = "";
+      groupsContainer.innerHTML = '<div class="text-center py-20 opacity-30 text-slate-400">Daftar dikosongkan</div>';
     });
-    generateBtn.addEventListener('click', () => { syncNamesFromTextarea(); generateGroups(); });
-    copyResultBtn.addEventListener('click', () => { syncNamesFromTextarea(); copyGroupsToClipboard(); });
+    generateBtn.addEventListener('click', generateGroups);
+    copyResultBtn.addEventListener('click', copyResultToClipboard);
     fileUpload.addEventListener('change', (e) => {
       if (e.target.files[0]) { handleFileUpload(e.target.files[0]); fileUpload.value = ''; }
     });
     loadExampleBtn.addEventListener('click', setDefaultExample);
 
-    // Initial Load
+    // Initial
     setDefaultExample();
-    setTimeout(() => { if (currentNames.length > 0) generateGroups(); }, 100);
+    setTimeout(generateGroups, 100);
   </script>
 </body>
 </html>
