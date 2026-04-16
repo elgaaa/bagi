@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <title>Random Group Generator | Pembagi Kelompok Acak</title>
+  <!-- Tailwind CSS v3 + Font Awesome Icons + Google Fonts -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Tambahan konfigurasi Tailwind untuk interaktivitas lebih smooth -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <style>
+    * { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+    body { background: linear-gradient(135deg, #f0f9ff 0%, #e9f0fa 100%); min-height: 100vh; }
+    .card-hover { transition: all 0.2s ease; }
+    .card-hover:hover { transform: translateY(-2px); box-shadow: 0 12px 20px -12px rgba(0,0,0,0.15); }
+    .group-card { transition: all 0.2s; }
+    .animate-fade { animation: fadeIn 0.3s ease-out; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    /* custom scroll */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #e2e8f0; border-radius: 10px; }
+    ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 10px; }
+    ::-webkit-scrollbar-thumb:hover { background: #5b6e8c; }
+    textarea, input { transition: all 0.2s; }
+    textarea:focus, input:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.2); }
+    .btn-primary { background: #2563eb; transition: 0.2s; }
+    .btn-primary:hover { background: #1d4ed8; transform: scale(1.01); }
+    .btn-secondary { background: #475569; transition: 0.2s; }
+    .btn-secondary:hover { background: #334155; }
+  </style>
+</head>
+<body class="p-4 md:p-6">
+
+  <div class="max-w-7xl mx-auto">
+    <!-- Header -->
+    <div class="text-center mb-8 mt-2">
+      <h1 class="text-4xl md:text-5xl font-extrabold bg-gradient-to-r from-blue-700 to-indigo-700 bg-clip-text text-transparent">⚡ Pembagi Kelompok Acak</h1>
+      <p class="text-gray-600 mt-2 text-lg">Atur jumlah kelompok & anggota per kelompok • Tambah nama via file (JSON/TXT)</p>
+    </div>
+
+    <!-- Dua panel utama: Kontrol & Hasil -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      
+      <!-- Panel Kiri: Setting & Input Nama -->
+      <div class="lg:col-span-1 space-y-5">
+        <!-- Card Pengaturan Kelompok -->
+        <div class="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-5 border border-white/40 card-hover">
+          <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2 border-b pb-2 mb-4"><i class="fas fa-sliders-h text-blue-600"></i> Pengaturan Kelompok</h2>
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1"><i class="fas fa-layer-group mr-1"></i> Jumlah Kelompok</label>
+              <input type="number" id="groupCount" min="1" max="50" value="3" class="w-full px-4 py-2 border border-gray-300 rounded-xl bg-white shadow-sm">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1"><i class="fas fa-users mr-1"></i> Anggota per Kelompok (opsional)</label>
+              <input type="number" id="membersPerGroup" min="1" max="100" placeholder="Contoh: 4" class="w-full px-4 py-2 border border-gray-300 rounded-xl bg-white shadow-sm">
+              <p class="text-xs text-gray-500 mt-1">* Jika diisi, akan mengabaikan "Jumlah Kelompok" dan membagi berdasarkan kapasitas tetap.</p>
+            </div>
+            <div class="bg-blue-50 p-3 rounded-xl text-sm text-blue-800">
+              <i class="fas fa-info-circle mr-1"></i> Aturan: Jika "Anggota per Kelompok" diisi → prioritas jumlah anggota per kelompok. Jika kosong → gunakan "Jumlah Kelompok".
+            </div>
+          </div>
+        </div>
+
+        <!-- Card Daftar Nama & Upload -->
+        <div class="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-5 border border-white/40 card-hover">
+          <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2 border-b pb-2 mb-4"><i class="fas fa-list-ul text-green-600"></i> Daftar Nama</h2>
+          
+          <!-- Upload file JSON/TXT -->
+          <div class="mb-4">
+            <label class="block text-sm font-semibold text-gray-700 mb-2"><i class="fas fa-upload"></i> Tambah Massal (JSON / TXT)</label>
+            <div class="flex flex-wrap gap-2">
+              <input type="file" id="fileUpload" accept=".json,.txt" class="block w-full text-sm text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+              <button id="loadExampleBtn" class="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1 rounded-full transition"><i class="fas fa-flask"></i> Contoh</button>
+            </div>
+            <p class="text-xs text-gray-500 mt-1">Format JSON: ["Andi", "Budi", "Cici"] atau TXT: satu nama per baris.</p>
+          </div>
+          
+          <!-- Textarea manual nama -->
+          <div class="mb-3">
+            <label class="block text-sm font-semibold text-gray-700 mb-1">✏️ Edit / Tambah Nama (satu per baris)</label>
+            <textarea id="namesInput" rows="7" class="w-full px-3 py-2 border border-gray-300 rounded-xl font-mono text-sm" placeholder="Contoh:&#10;Andi Saputra&#10;Budi Wijaya&#10;Cinta Laura&#10;Dewi Ratna&#10;Eko Prasetyo&#10;Farah Quinn"></textarea>
+          </div>
+          
+          <div class="flex gap-3 flex-wrap mt-2">
+            <button id="resetNamesBtn" class="text-sm bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded-xl transition flex items-center gap-1"><i class="fas fa-undo-alt"></i> Reset ke Contoh</button>
+            <button id="clearNamesBtn" class="text-sm bg-red-100 hover:bg-red-200 text-red-700 px-4 py-2 rounded-xl transition flex items-center gap-1"><i class="fas fa-trash-alt"></i> Hapus Semua</button>
+          </div>
+          
+          <div class="mt-3 text-xs text-gray-500 flex justify-between items-center">
+            <span><i class="fas fa-user-friends"></i> Total nama: <span id="totalNamesCount">0</span></span>
+            <span class="bg-gray-100 px-2 py-0.5 rounded-full"><i class="far fa-lightbulb"></i> Duplikat otomatis dibersihkan</span>
+          </div>
+        </div>
+
+        <!-- Tombol Generate & Aksi -->
+        <div class="flex flex-col sm:flex-row gap-3">
+          <button id="generateBtn" class="btn-primary flex-1 text-white font-bold py-3 px-4 rounded-xl shadow-md flex items-center justify-center gap-2 text-lg"><i class="fas fa-random"></i> Bentuk Kelompok Acak!</button>
+          <button id="copyResultBtn" class="bg-gray-600 hover:bg-gray-700 text-white font-medium py-3 px-4 rounded-xl shadow flex items-center justify-center gap-2 transition"><i class="fas fa-copy"></i> Salin Hasil</button>
+        </div>
+        <div class="text-xs text-gray-400 text-center mt-1">* Pengelompokan acak berdasarkan nama yang terdaftar, pengaturan fleksibel.</div>
+      </div>
+
+      <!-- Panel Kanan: Hasil Kelompok -->
+      <div class="lg:col-span-2">
+        <div class="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-5 border border-white/40 min-h-[500px] card-hover">
+          <div class="flex justify-between items-center border-b pb-2 mb-4 flex-wrap gap-2">
+            <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2"><i class="fas fa-users-viewfinder text-indigo-600"></i> Hasil Pembagian Kelompok</h2>
+            <span id="infoSummary" class="text-sm bg-gray-100 px-3 py-1 rounded-full text-gray-600"></span>
+          </div>
+          <div id="groupsContainer" class="space-y-4 max-h-[600px] overflow-y-auto pr-1">
+            <!-- Hasil kelompok dinamis muncul di sini -->
+            <div class="text-center text-gray-400 py-12 flex flex-col items-center gap-3">
+              <i class="fas fa-arrow-left text-4xl opacity-50"></i>
+              <p>Atur nama dan klik "Bentuk Kelompok Acak!" untuk melihat hasil</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ---------------------- STATE -------------------------
+    let currentNames = [];     // array of unique names (string)
+
+    // DOM Elements
+    const namesTextarea = document.getElementById('namesInput');
+    const totalNamesSpan = document.getElementById('totalNamesCount');
+    const generateBtn = document.getElementById('generateBtn');
+    const resetNamesBtn = document.getElementById('resetNamesBtn');
+    const clearNamesBtn = document.getElementById('clearNamesBtn');
+    const fileUpload = document.getElementById('fileUpload');
+    const loadExampleBtn = document.getElementById('loadExampleBtn');
+    const groupsContainer = document.getElementById('groupsContainer');
+    const groupCountInput = document.getElementById('groupCount');
+    const membersPerGroupInput = document.getElementById('membersPerGroup');
+    const copyResultBtn = document.getElementById('copyResultBtn');
+    const infoSummary = document.getElementById('infoSummary');
+
+    // Helper: update textarea dan total count dari currentNames
+    function updateUIFromNames() {
+      namesTextarea.value = currentNames.join('\n');
+      totalNamesSpan.innerText = currentNames.length;
+    }
+
+    // Parse dan set nama dari string (satu per baris), hapus duplikat & filter kosong
+    function setNamesFromString(rawStr) {
+      let lines = rawStr.split(/\r?\n/);
+      let names = lines
+        .map(l => l.trim())
+        .filter(l => l !== "");
+      // Hapus duplikat (case-sensitive biar adil, namun bisa juga case-insensitive? pilih case-sensitive karena nama unik)
+      const uniqueNames = [];
+      const seen = new Set();
+      for (let n of names) {
+        if (!seen.has(n)) {
+          seen.add(n);
+          uniqueNames.push(n);
+        }
+      }
+      if (uniqueNames.length === 0 && rawStr.trim() !== "") {
+        // jika setelah filter kosong semua, beri peringatan
+        alert("Tidak ada nama valid yang ditemukan. Pastikan format benar.");
+        return false;
+      }
+      currentNames = uniqueNames;
+      updateUIFromNames();
+      return true;
+    }
+
+    // Reset ke contoh nama default
+    function setDefaultExample() {
+      const defaultNames = [
+        "Andi Pratama", "Budi Santoso", "Citra Kirana", "Dian Sastro", "Eko Nugroho",
+        "Fira Aulia", "Gilang Ramadan", "Hani Indah", "Irfan Hakim", "Joko Widodo",
+        "Kartika Sari", "Lestari Dewi", "Mega Utami", "Nina Zatulini", "Oscar Ramadhan"
+      ];
+      currentNames = [...defaultNames];
+      updateUIFromNames();
+    }
+
+    // Baca file upload (JSON / TXT)
+    function handleFileUpload(file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const content = e.target.result;
+        const fileType = file.name.split('.').pop().toLowerCase();
+        try {
+          if (fileType === 'json') {
+            const parsed = JSON.parse(content);
+            if (Array.isArray(parsed)) {
+              let stringArray = parsed.map(item => String(item).trim()).filter(s => s !== "");
+              setNamesFromString(stringArray.join('\n'));
+            } else {
+              alert("Format JSON harus berupa array of strings, contoh: [\"Nama1\", \"Nama2\"]");
+            }
+          } else if (fileType === 'txt') {
+            setNamesFromString(content);
+          } else {
+            alert("Hanya file .json atau .txt yang didukung.");
+          }
+        } catch (err) {
+          alert("Gagal membaca file: " + err.message);
+        }
+      };
+      reader.readAsText(file, "UTF-8");
+    }
+
+    // Mendapatkan setting kelompok berdasarkan prioritas
+    function getGroupingParams(totalNamesCount) {
+      let groupCount = parseInt(groupCountInput.value);
+      let membersPerGroupRaw = membersPerGroupInput.value.trim();
+      let useFixedMembers = membersPerGroupRaw !== "";
+      let fixedMembers = useFixedMembers ? parseInt(membersPerGroupRaw) : 0;
+
+      if (totalNamesCount === 0) {
+        return { error: "Tidak ada nama. Silakan tambahkan nama terlebih dahulu." };
+      }
+
+      if (useFixedMembers) {
+        if (isNaN(fixedMembers) || fixedMembers < 1) {
+          return { error: "Jumlah anggota per kelompok harus minimal 1." };
+        }
+        // hitung jumlah kelompok yang diperlukan
+        let requiredGroups = Math.ceil(totalNamesCount / fixedMembers);
+        if (requiredGroups < 1) requiredGroups = 1;
+        return { mode: "membersPerGroup", membersPerGroup: fixedMembers, totalGroups: requiredGroups };
+      } else {
+        // mode jumlah kelompok
+        if (isNaN(groupCount) || groupCount < 1) groupCount = 1;
+        if (groupCount > totalNamesCount) {
+          // jika kelompok lebih banyak dari nama, batasi kelompok hanya sejumlah nama (tiap kelompok minimal 1 orang)
+          groupCount = totalNamesCount;
+        }
+        return { mode: "groupCount", groupCount: groupCount, totalGroups: groupCount };
+      }
+    }
+
+    // Acak array (Fisher-Yates)
+    function shuffleArray(arr) {
+      const array = [...arr];
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+      return array;
+    }
+
+    // Membentuk kelompok berdasarkan parameter
+    function generateGroups() {
+      if (currentNames.length === 0) {
+        groupsContainer.innerHTML = `<div class="text-center text-amber-600 py-10 bg-amber-50 rounded-xl"><i class="fas fa-exclamation-triangle text-3xl mb-2 block"></i> Belum ada nama! Silakan tambahkan nama via textarea atau upload file.</div>`;
+        infoSummary.innerText = "0 nama";
+        return;
+      }
+
+      const total = currentNames.length;
+      const params = getGroupingParams(total);
+      if (params.error) {
+        groupsContainer.innerHTML = `<div class="text-center text-red-500 py-10 bg-red-50 rounded-xl"><i class="fas fa-circle-exclamation"></i> ${params.error}</div>`;
+        infoSummary.innerText = `${total} nama • Error`;
+        return;
+      }
+
+      // Acak daftar nama
+      const shuffled = shuffleArray(currentNames);
+      let groups = [];
+      let totalGroups = params.totalGroups;
+
+      if (params.mode === "membersPerGroup") {
+        const members = params.membersPerGroup;
+        let idx = 0;
+        for (let g = 0; g < totalGroups; g++) {
+          let groupMembers = shuffled.slice(idx, idx + members);
+          if (groupMembers.length > 0) groups.push(groupMembers);
+          idx += members;
+          if (idx >= shuffled.length) break;
+        }
+        // jika sisa nama (misal kelebihan) karena pembulatan, masukkan ke kelompok terakhir
+        if (idx < shuffled.length) {
+          const remaining = shuffled.slice(idx);
+          if (groups.length > 0) groups[groups.length - 1] = [...groups[groups.length - 1], ...remaining];
+          else groups.push(remaining);
+        }
+      } 
+      else {
+        // mode jumlah kelompok
+        let groupCountFinal = params.groupCount;
+        let baseSize = Math.floor(total / groupCountFinal);
+        let remainder = total % groupCountFinal;
+        let start = 0;
+        for (let i = 0; i < groupCountFinal; i++) {
+          let currentSize = baseSize + (i < remainder ? 1 : 0);
+          let groupSlice = shuffled.slice(start, start + currentSize);
+          groups.push(groupSlice);
+          start += currentSize;
+        }
+      }
+
+      // Filter kemungkinan kelompok kosong (tidak mungkin karena total nama >= 1, namun antisipasi)
+      groups = groups.filter(g => g.length > 0);
+      renderGroupsToDOM(groups);
+      infoSummary.innerText = `${total} nama → ${groups.length} kelompok`;
+      return groups;
+    }
+
+    // Render kelompok dengan tampilan card menarik
+    function renderGroupsToDOM(groups) {
+      if (!groups.length) {
+        groupsContainer.innerHTML = `<div class="text-center text-gray-400 py-12">Tidak ada kelompok yang terbentuk.</div>`;
+        return;
+      }
+
+      let html = '';
+      groups.forEach((group, idx) => {
+        const groupNumber = idx + 1;
+        const memberItems = group.map((name, mIdx) => 
+          `<li class="flex items-center gap-2 py-1.5 border-b border-gray-100 last:border-0"><span class="w-6 h-6 rounded-full bg-blue-100 text-blue-700 text-xs flex items-center justify-center font-bold">${mIdx+1}</span><span class="text-gray-800 font-medium">${escapeHtml(name)}</span></li>`
+        ).join('');
+        
+        html += `
+          <div class="group-card bg-gradient-to-r from-white to-gray-50 rounded-xl shadow-md border border-gray-200 overflow-hidden animate-fade">
+            <div class="bg-indigo-600 px-4 py-2.5 flex justify-between items-center">
+              <h3 class="font-bold text-white text-lg flex items-center gap-2"><i class="fas fa-users"></i> Kelompok ${groupNumber}</h3>
+              <span class="bg-white/30 text-white text-xs font-semibold px-2 py-1 rounded-full">${group.length} anggota</span>
+            </div>
+            <ul class="p-4 space-y-1 max-h-64 overflow-y-auto">
+              ${memberItems || '<li class="text-gray-400 italic">Tidak ada anggota</li>'}
+            </ul>
+          </div>
+        `;
+      });
+      groupsContainer.innerHTML = html;
+    }
+
+    // simple escape HTML
+    function escapeHtml(str) {
+      return str.replace(/[&<>]/g, function(m) {
+        if (m === '&') return '&amp;';
+        if (m === '<') return '&lt;';
+        if (m === '>') return '&gt;';
+        return m;
+      }).replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, function(c) {
+        return c;
+      });
+    }
+
+    // Copy hasil kelompok ke clipboard (format teks rapi)
+    function copyGroupsToClipboard() {
+      if (currentNames.length === 0) {
+        alert("Tidak ada data kelompok. Generate kelompok terlebih dahulu.");
+        return;
+      }
+      // generate ulang kelompok untuk konsistensi (menggunakan acak baru? tapi lebih baik generate ulang dengan acak baru? 
+      // Agar fair, copy menggunakan hasil yang tampil saat ini? Tapi karena tombol copy, kita generate ulang sesuai state saat ini?
+      // Tapi agar sesuai dengan yang dilihat user, lebih baik mengambil dari DOM atau generate ulang dengan parameter sama tapi hasil random berbeda?
+      // Agar user tidak bingung, kita generate kelompok baru dengan algoritma yang sama lalu copy. Tapi akan beda dengan tampilan. 
+      // Alternatif: ambil dari hasil render terakhir. Simpan lastGroups.
+      // Mari simpan lastGroups setelah generate.
+      const groups = generateGroups(); // ini akan merender ulang sekaligus. Agar konsisten, copy dari hasil generate langsung.
+      if (!groups || groups.length === 0) return;
+      
+      let copyText = "📋 HASIL PEMBAGIAN KELOMPOK ACAK\n";
+      copyText += `================================\n`;
+      groups.forEach((group, i) => {
+        copyText += `\n🏆 KELOMPOK ${i+1} (${group.length} orang):\n`;
+        group.forEach((name, idx) => {
+          copyText += `   ${idx+1}. ${name}\n`;
+        });
+      });
+      copyText += `\n✨ Dibuat dengan Random Group Generator ✨`;
+      navigator.clipboard.writeText(copyText).then(() => {
+        alert("✅ Hasil kelompok berhasil disalin ke clipboard!");
+      }).catch(() => {
+        alert("Gagal menyalin, izinkan clipboard manual.");
+      });
+    }
+
+    // Sinkronisasi dari textarea manual ke currentNames
+    function syncNamesFromTextarea() {
+      const raw = namesTextarea.value;
+      const lines = raw.split(/\r?\n/);
+      const namesArray = lines.map(l => l.trim()).filter(l => l !== "");
+      const unique = [];
+      const seenSet = new Set();
+      for (let n of namesArray) {
+        if (!seenSet.has(n)) {
+          seenSet.add(n);
+          unique.push(n);
+        }
+      }
+      currentNames = unique;
+      totalNamesSpan.innerText = currentNames.length;
+      // optional: tampilkan peringatan jika ada duplikat otomatis terhapus
+      if (namesArray.length !== unique.length) {
+        // tidak perlu notifikasi mengganggu, hanya update
+      }
+    }
+
+    // Event Listeners
+    namesTextarea.addEventListener('input', () => {
+      syncNamesFromTextarea();
+    });
+
+    resetNamesBtn.addEventListener('click', () => {
+      setDefaultExample();
+    });
+
+    clearNamesBtn.addEventListener('click', () => {
+      currentNames = [];
+      updateUIFromNames();
+      groupsContainer.innerHTML = `<div class="text-center text-gray-400 py-12"><i class="fas fa-trash-alt text-3xl mb-2"></i><p>Daftar nama kosong. Tambahkan nama terlebih dahulu.</p></div>`;
+      infoSummary.innerText = "0 nama";
+    });
+
+    generateBtn.addEventListener('click', () => {
+      syncNamesFromTextarea(); // pastikan sinkron sebelum generate
+      generateGroups();
+    });
+
+    copyResultBtn.addEventListener('click', () => {
+      syncNamesFromTextarea();
+      copyGroupsToClipboard();
+    });
+
+    fileUpload.addEventListener('change', (e) => {
+      if (e.target.files && e.target.files[0]) {
+        handleFileUpload(e.target.files[0]);
+        fileUpload.value = ''; // allow re-upload same file
+      }
+    });
+
+    loadExampleBtn.addEventListener('click', () => {
+      setDefaultExample();
+    });
+
+    // inisialisasi default contoh nama
+    setDefaultExample();
+    // generate pertama kali secara otomatis? biarkan user klik, tapi tampilkan preview kosong dengan contoh
+    // Optional: tampilkan hasil awal dengan generate otomatis setelah set contoh?
+    // agar user langsung lihat demo: generate pertama kali
+    setTimeout(() => {
+      if (currentNames.length > 0) {
+        generateGroups();
+      }
+    }, 100);
+  </script>
+</body>
+</html>
